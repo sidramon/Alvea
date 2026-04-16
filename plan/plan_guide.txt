@@ -1,0 +1,76 @@
+**EXECUTION TEMPLATE GUIDE**
+
+This file details the object structures to be inserted into the arrays of the plan.json file.
+
+1. ready_queue
+------------------------------
+Used when a task from the backlog is admitted for execution but is waiting for an agent.
+Structure:
+{
+  "task_id": "TASK_ID",
+  "assigned_to": "Agent name",
+  "priority_score": 0.0,
+  "reason": "Why it is prioritized",
+  "status": "queued"
+}
+
+2. in_progress
+--------------------------------
+Used when an agent is actively working on the task.
+Structure:
+{
+  "task_id": "TASK_ID",
+  "assigned_to": "Agent name",
+  "started_at": "ISO-TIMESTAMP",
+  "attempt": 1
+}
+
+3. blocked
+----------------------------
+Used when a dependency or error prevents progress.
+Structure:
+{
+  "task_id": "TASK_ID",
+  "reason": "Description of the blockage"
+}
+
+4. decisions (History)
+-------------------------
+Log of actions taken by the orchestrator.
+Structure:
+{
+  "timestamp": "ISO-TIMESTAMP",
+  "action": "ACTION_NAME",
+  "task_id": "TASK_ID",
+  "reason": "Justification for the decision"
+}
+"""
+
+# Content for template_task.txt
+template_task_content = """TASK TEMPLATE GUIDE (BACKLOG)
+
+This file defines the structure of an individual task as it should appear in the 'backlog' array of the main file.
+
+JSON Structure:
+----------------
+{
+  "id": "TASK-XXX",
+  "title": "Short title",
+  "description": "Detailed description of the objective",
+  "layer": "Layer (e.g., architecture, core, ui)",
+  "type": "Type (e.g., setup, feature, fix)",
+  "priority_hint": 0.0, (0.0 to 1.0)
+  "complexity": 0.0, (0.0 to 1.0)
+  "vision_alignment": 0.0, (0.0 to 1.0)
+  "dependencies": [], (List of task IDs)
+  "outputs": [], (List of expected file/directory paths)
+  "status": "pending",
+  "tags": []
+}
+
+Key Fields:
+-------------
+- priority_hint: Influences the final priority score.
+- vision_alignment: Measures the strategic importance of the task.
+- outputs: Explicit list of what the task must produce to be considered "Done".
+- dependencies: Prevents admission to the 'ready_queue' if the listed IDs are not completed.

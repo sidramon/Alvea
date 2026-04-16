@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axoloop Alvea</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+    <span class="header-title">🧠&nbsp; AXOLOOP ALVEA</span>
+    <span class="header-sub">Multi-Agent Workflow Engine</span>
+</header>
+
+<div class="main">
+
+    <!-- ── LEFT PANEL: config form ── -->
+    <aside class="left-panel">
+        <div class="form-inner">
+
+            <div class="section-label">📝&nbsp; Description du projet</div>
+            <textarea id="description" rows="7"
+                      placeholder="Décris ici l'objectif de ton projet..."></textarea>
+
+            <div class="section-label">🏗&nbsp; Architecture</div>
+            <div class="radio-group">
+                <label><input type="radio" name="arch" value="Hexagonal" checked> Hexagonal</label>
+                <label><input type="radio" name="arch" value="Clean Architecture"> Clean Architecture</label>
+                <label><input type="radio" name="arch" value="MVC"> MVC</label>
+                <label><input type="radio" name="arch" value="Layered"> Layered</label>
+                <label><input type="radio" name="arch" value="Microservices"> Microservices</label>
+            </div>
+
+            <div class="section-label">📦&nbsp; Composants</div>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="comp" value="Docker" checked> Docker</label>
+                <label><input type="checkbox" name="comp" value="Tests unitaires" checked> Tests unitaires</label>
+                <label><input type="checkbox" name="comp" value="Linting" checked> Linting</label>
+                <label><input type="checkbox" name="comp" value="Tests d'intégration"> Tests d'intégration</label>
+                <label><input type="checkbox" name="comp" value="CI/CD (GitHub Actions)"> CI/CD (GitHub Actions)</label>
+                <label><input type="checkbox" name="comp" value="REST API"> REST API</label>
+                <label><input type="checkbox" name="comp" value="GraphQL"> GraphQL</label>
+                <label><input type="checkbox" name="comp" value="Authentification JWT"> Authentification JWT</label>
+                <label><input type="checkbox" name="comp" value="Documentation OpenAPI"> Documentation OpenAPI</label>
+            </div>
+
+            <div class="section-label">🗄&nbsp; Base de données</div>
+            <div class="radio-group">
+                <label><input type="radio" name="db" value="Aucune" checked> Aucune</label>
+                <label><input type="radio" name="db" value="PostgreSQL"> PostgreSQL</label>
+                <label><input type="radio" name="db" value="SQLite"> SQLite</label>
+                <label><input type="radio" name="db" value="MongoDB"> MongoDB</label>
+                <label><input type="radio" name="db" value="Redis"> Redis</label>
+            </div>
+
+            <div class="section-label">🤖&nbsp; LLM</div>
+            <div class="form-row">
+                <label>URL</label>
+                <input type="text" id="llm-url" value="http://localhost:11434/v1">
+            </div>
+            <div class="form-row">
+                <label>Modèle</label>
+                <input type="text" id="llm-model" value="llama3">
+            </div>
+            <div class="form-row">
+                <label>Max cycles</label>
+                <input type="number" id="max-cycles" value="20" min="1" max="200" class="input-short">
+            </div>
+
+            <button id="launch-btn" class="btn-green" onclick="toggleRun()">▶&nbsp; LANCER LES AGENTS</button>
+            <button id="reset-btn" class="btn-dim" onclick="doReset()">↺&nbsp; RESET</button>
+
+        </div>
+    </aside>
+
+    <!-- ── RIGHT PANEL ── -->
+    <div class="right-panel">
+
+        <!-- Agent grid -->
+        <div class="agents-bar">
+            <div class="agents-label">AGENTS</div>
+            <div class="agents-grid">
+                <div class="agent-card" id="agent-Derick">
+                    <div class="agent-dot">⬤</div>
+                    <div class="agent-name" style="color:#388bfd">Derick</div>
+                    <div class="agent-task">idle</div>
+                </div>
+                <div class="agent-card" id="agent-Jef">
+                    <div class="agent-dot">⬤</div>
+                    <div class="agent-name" style="color:#d2a8ff">Jef</div>
+                    <div class="agent-task">idle</div>
+                </div>
+                <div class="agent-card" id="agent-Zed">
+                    <div class="agent-dot">⬤</div>
+                    <div class="agent-name" style="color:#3fb950">Zed</div>
+                    <div class="agent-task">idle</div>
+                </div>
+                <div class="agent-card" id="agent-Earl">
+                    <div class="agent-dot">⬤</div>
+                    <div class="agent-name" style="color:#e3b341">Earl</div>
+                    <div class="agent-task">idle</div>
+                </div>
+                <div class="agent-card" id="agent-Chris">
+                    <div class="agent-dot">⬤</div>
+                    <div class="agent-name" style="color:#f78166">Chris</div>
+                    <div class="agent-task">idle</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats bar -->
+        <div class="stats-bar">
+            <div class="stat-group">
+                <span class="stat-label">CYCLE</span>
+                <span class="stat-value" id="stat-cycle">0</span>
+            </div>
+            <div class="stat-group">
+                <span class="stat-label">TERMINÉES</span>
+                <span class="stat-value" id="stat-completed">0</span>
+            </div>
+            <div class="stat-group">
+                <span class="stat-label">BLOQUÉES</span>
+                <span class="stat-value" id="stat-blocked">0</span>
+            </div>
+            <span class="status-badge" id="status-badge">● EN ATTENTE</span>
+        </div>
+
+        <!-- Events log -->
+        <div class="log-header">
+            <span>EVENTS LOG</span>
+            <button class="btn-link" onclick="clearLog()">Vider</button>
+        </div>
+        <div class="log-area" id="log-area"></div>
+
+    </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

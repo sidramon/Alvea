@@ -1,0 +1,11 @@
+{
+    "timestamp": "YYYY-MM-DDThh:mm:ss.sssZ",
+    "cycle": 0,
+    "agent": "Derick | Jef | Zed | Earl | Chris | System",
+    "event_type": "ENUM_TYPE",
+    "target": "TASK-XXX | path/to/file | null",
+    "payload": {
+        "info": "event-specific information",
+        "result": "success | failure | value"
+    }
+}

@@ -1,0 +1,6 @@
+{
+  "status": "idle | running | halted",
+  "current_cycle": 0,
+  "global_stage": "vision | planning | execution | validation | feedback",
+  "health_check": "nominal | degraded | critical"
+}

@@ -1,0 +1,5 @@
+{
+  "status": "idle | busy | waiting | monitoring | error",
+  "current_task": "TASK-XXX | null",
+  "last_action": "string | null"
+}

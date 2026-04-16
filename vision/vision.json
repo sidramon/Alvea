@@ -1,0 +1,62 @@
+{
+  "project_name": "Axoloop Alvea",
+  "version": "0.1",
+  "goal": {
+    "primary_objective": "",
+    "secondary_objectives": []
+  },
+  "architecture": {
+    "style": "Hexagonal",
+    "layers": [],
+    "modules": []
+  },
+  "dependency_rules": [
+    {
+      "from": "",
+      "to": ""
+    }
+  ],
+  "agents_contract": {
+    "Derick": {
+      "role": "orchestrator",
+      "rules": []
+    },
+    "Jef": {
+      "role": "planner",
+      "rules": []
+    },
+    "Zed": {
+      "role": "coder",
+      "rules": []
+    },
+    "Earl": {
+      "role": "reviewer",
+      "rules": []
+    },
+    "Chris": {
+      "role": "executor",
+      "rules": []
+    }
+  },
+  "quality_constraints": {
+    "tests_required": true,
+    "max_function_length": 0,
+    "max_file_complexity": 0,
+    "require_linting": true
+  },
+  "forbidden_patterns": [
+    ""
+  ],
+  "allowed_patterns": [
+    ""
+  ],
+  "execution_policy": {
+    "max_parallel_tasks": 1,
+    "retry_limit": 0,
+    "admission_strategy": "score_based"
+  },
+  "definitions": {
+    "task_granularity": "",
+    "done_definition": ""
+  }
+}

@@ -1,0 +1,27 @@
+**TASK TEMPLATE GUIDE (BACKLOG)**
+
+This file defines the structure of an individual task as it should appear in the 'backlog' array of the main file.
+
+**JSON Structure:**
+----------------
+{
+  "id": "TASK-XXX",
+  "title": "Short title",
+  "description": "Detailed description of the objective",
+  "layer": "Layer (e.g., architecture, core, ui)",
+  "type": "Type (e.g., setup, feature, fix)",
+  "priority_hint": 0.0, (0.0 to 1.0)
+  "complexity": 0.0, (0.0 to 1.0)
+  "vision_alignment": 0.0, (0.0 to 1.0)
+  "dependencies": [], (List of task IDs)
+  "outputs": [], (List of expected file/directory paths)
+  "status": "pending",
+  "tags": []
+}
+
+**Key Fields:**
+-------------
+- **priority_hint**: Influences the final priority score.
+- **vision_alignment**: Measures the strategic importance of the task.
+- **outputs**: Explicit list of what the task must produce to be considered "Done".
+- **dependencies**: Prevents admission to the 'ready_queue' if the listed IDs are not completed.

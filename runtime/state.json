@@ -1,0 +1,43 @@
+{
+  "project_id": "Axoloop Alvea",
+  "last_sync": "",
+  "engine": {
+    "status": "idle",
+    "current_cycle": 0,
+    "global_stage": "vision",
+    "health_check": "nominal"
+  },
+  "agents_activity": {
+    "Derick": {
+      "status": "idle",
+      "current_task": null,
+      "last_action": null
+    },
+    "Jef": {
+      "status": "busy",
+      "current_task": "test\n\nContraintes techniques :\n- Architecture : Hexagonal\n- Docker : oui\n- Tests",
+      "last_action": "PLANNING"
+    },
+    "Zed": {
+      "status": "idle",
+      "current_task": null,
+      "last_action": null
+    },
+    "Earl": {
+      "status": "idle",
+      "current_task": null,
+      "last_action": null
+    },
+    "Chris": {
+      "status": "idle",
+      "current_task": null,
+      "last_action": null
+    }
+  },
+  "workflow_context": {
+    "active_session_id": null,
+    "total_tasks_completed": 0,
+    "blockers_count": 0,
+    "last_error": null
+  }
+}

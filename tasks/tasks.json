@@ -1,0 +1,15 @@
+{
+  "project_id": "Axoloop Alvea",
+  "version": "0.1",
+  "generated_by": "Jef",
+  "task_model": {
+    "granularity": "atomic",
+    "definition_of_done": "task produces verifiable output in workspace + passes tests if applicable"
+  },
+  "backlog": [],
+  "metadata": {
+    "total_tasks": 0,
+    "generated_at": "",
+    "last_updated": ""
+  }
+}

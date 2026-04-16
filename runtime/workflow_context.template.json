@@ -1,0 +1,6 @@
+{
+  "active_session_id": "string | null",
+  "total_tasks_completed": 0,
+  "blockers_count": 0,
+  "last_error": "string | null"
+}
