@@ -1,0 +1,10 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+gui.py
+workspace/*
+runtime/events.log
+docker/

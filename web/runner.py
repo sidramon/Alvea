@@ -112,6 +112,7 @@ class AppState:
         self.agent_status: Dict[str, Dict] = {
             a: {"status": "idle", "task": None} for a in AGENTS
         }
+        self.agent_stream: Dict[str, str] = {a: "" for a in AGENTS}
         self.stats = {"cycle": 0, "completed": 0, "blocked": 0}
 
     def push_event(self, event: Dict):
@@ -135,6 +136,14 @@ class AppState:
         with self._lock:
             self.stats = {"cycle": cycle, "completed": completed, "blocked": blocked}
 
+    def set_agent_stream(self, agent: str, text: str):
+        with self._lock:
+            self.agent_stream[agent] = text
+
+    def append_agent_stream(self, agent: str, chunk: str):
+        with self._lock:
+            self.agent_stream[agent] = self.agent_stream.get(agent, "") + chunk
+
     def get_snapshot(self, since: int = 0) -> Dict:
         with self._lock:
             return {
@@ -144,6 +153,7 @@ class AppState:
                 "total_events": len(self.events),
                 "agent_status": {k: dict(v) for k, v in self.agent_status.items()},
                 "stats": dict(self.stats),
+                "agent_stream": dict(self.agent_stream),
             }
 
     def reset(self):
@@ -152,6 +162,7 @@ class AppState:
             self.status = "idle"
             self.events = []
             self.agent_status = {a: {"status": "idle", "task": None} for a in AGENTS}
+            self.agent_stream = {a: "" for a in AGENTS}
             self.stats = {"cycle": 0, "completed": 0, "blocked": 0}
 
 
@@ -276,10 +287,25 @@ def _run_system(config: Dict):
             lines.append(f"- Base de données : {config['db']}")
         objective = "\n".join(lines)
 
+        def stream_for(agent_name: str):
+            """Returns an on_chunk callback that routes LLM tokens to state."""
+            def _cb(chunk: str):
+                state.append_agent_stream(agent_name, chunk)
+            return _cb
+
+        def with_stream(agent_name: str, fn):
+            """Clears the stream buffer, attaches callback, calls fn, detaches."""
+            state.set_agent_stream(agent_name, "")
+            llm.on_chunk = stream_for(agent_name)
+            try:
+                return fn()
+            finally:
+                llm.on_chunk = None
+
         # Phase 1: Planning
         state.push_msg("Jef", "Décomposition de l'objectif en cours...")
         state.set_agent("Jef", "busy")
-        task_ids = jef.plan_objective(objective)
+        task_ids = with_stream("Jef", lambda: jef.plan_objective(objective))
         state.push_msg("Jef", f"{len(task_ids)} tâches créées : {task_ids}")
         state.set_agent("Jef", "idle")
 
@@ -289,7 +315,7 @@ def _run_system(config: Dict):
                 break
 
             backlog = task_mgr.load_state()["backlog"]
-            if all(t["status"] in ("completed", "blocked") for t in backlog):
+            if all(t.get("status", "pending") in ("completed", "blocked") for t in backlog):
                 state.push_msg("System", "Toutes les tâches sont résolues.")
                 break
 
@@ -324,7 +350,7 @@ def _run_system(config: Dict):
                 if assigned == "Zed":
                     state.set_agent("Zed", "busy", task_id)
                     try:
-                        zed.implement_task(task_id)
+                        with_stream("Zed", lambda: zed.implement_task(task_id))
                         derick.handoff_to_reviewer(task_id)
                     except Exception as e:
                         derick.fail_task(task_id, str(e))
@@ -333,7 +359,7 @@ def _run_system(config: Dict):
                 elif assigned == "Earl":
                     state.set_agent("Earl", "busy", task_id)
                     try:
-                        result = earl.review_task(task_id)
+                        result = with_stream("Earl", lambda: earl.review_task(task_id))
                         if result["passed"]:
                             derick.handoff_to_executor(task_id)
                         else:
@@ -436,8 +462,8 @@ def _sync_stats(planner, task_mgr):
         plan    = planner.load_plan()
         backlog = task_mgr.load_state()["backlog"]
         cycle     = plan.get("state", {}).get("cycle", 0)
-        completed = sum(1 for t in backlog if t["status"] == "completed")
-        blocked   = sum(1 for t in backlog if t["status"] == "blocked")
+        completed = sum(1 for t in backlog if t.get("status") == "completed")
+        blocked   = sum(1 for t in backlog if t.get("status") == "blocked")
         state.set_stats(cycle, completed, blocked)
     except Exception:
         pass

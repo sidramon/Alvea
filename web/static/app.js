@@ -1,5 +1,18 @@
 'use strict';
 
+// Load server-side defaults (LLM_URL / LLM_MODEL from env) on page load
+(async () => {
+    try {
+        const res = await fetch('/api/config');
+        if (!res.ok) return;
+        const cfg = await res.json();
+        const urlEl   = document.getElementById('llm-url');
+        const modelEl = document.getElementById('llm-model');
+        if (urlEl   && cfg.llm_url)   urlEl.value   = cfg.llm_url;
+        if (modelEl && cfg.llm_model) modelEl.value = cfg.llm_model;
+    } catch { /* server not yet ready — keep HTML defaults */ }
+})();
+
 // ─────────────────────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────────────────────
@@ -10,9 +23,18 @@ const AGENT_COLORS = {
     error: '#b62324',
 };
 
-let running     = false;
-let eventOffset = 0;
-let pollTimer   = null;
+const AGENT_NAME_COLORS = {
+    Derick: '#388bfd',
+    Jef:    '#d2a8ff',
+    Zed:    '#3fb950',
+    Earl:   '#e3b341',
+    Chris:  '#f78166',
+};
+
+let running          = false;
+let eventOffset      = 0;
+let pollTimer        = null;
+let activeStreamAgent = null;   // which agent's stream is displayed
 
 
 // ─────────────────────────────────────────────────────────────
@@ -121,6 +143,9 @@ async function poll() {
 
         // Stats
         setStats(data.stats.cycle, data.stats.completed, data.stats.blocked);
+
+        // Stream panel
+        updateStreamPanel(data.agent_stream);
 
         // New events / messages
         for (const ev of data.events) {
@@ -234,6 +259,53 @@ function resetAgents() {
     for (const agent of ['Derick', 'Jef', 'Zed', 'Earl', 'Chris']) {
         updateAgentCard(agent, 'idle', null);
     }
+}
+
+// ── Stream panel ─────────────────────────────────────────────
+
+function toggleStream(agent) {
+    if (activeStreamAgent === agent) {
+        closeStream();
+    } else {
+        openStream(agent);
+    }
+}
+
+function openStream(agent) {
+    if (activeStreamAgent) {
+        document.getElementById(`agent-${activeStreamAgent}`)?.classList.remove('stream-active');
+    }
+    activeStreamAgent = agent;
+    document.getElementById(`agent-${agent}`)?.classList.add('stream-active');
+
+    const color = AGENT_NAME_COLORS[agent] || '#c9d1d9';
+    document.getElementById('stream-panel-title').innerHTML =
+        `<span style="color:${color};font-weight:bold">${agent}</span>&nbsp;— STREAM LLM`;
+    document.getElementById('stream-panel').classList.add('open');
+}
+
+function closeStream() {
+    if (activeStreamAgent) {
+        document.getElementById(`agent-${activeStreamAgent}`)?.classList.remove('stream-active');
+        activeStreamAgent = null;
+    }
+    document.getElementById('stream-panel').classList.remove('open');
+}
+
+function updateStreamPanel(streamMap) {
+    if (!activeStreamAgent) return;
+    const body = document.getElementById('stream-body');
+    const text = (streamMap?.[activeStreamAgent] || '').trim();
+
+    if (!text) { body.innerHTML = ''; return; }
+
+    const atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 40;
+    body.innerHTML = escapeHtml(text) + '<span class="stream-cursor"></span>';
+    if (atBottom) body.scrollTop = body.scrollHeight;
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 

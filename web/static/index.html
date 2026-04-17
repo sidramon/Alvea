@@ -81,31 +81,45 @@
         <div class="agents-bar">
             <div class="agents-label">AGENTS</div>
             <div class="agents-grid">
-                <div class="agent-card" id="agent-Derick">
+                <div class="agent-card" id="agent-Derick" onclick="toggleStream('Derick')">
                     <div class="agent-dot">⬤</div>
                     <div class="agent-name" style="color:#388bfd">Derick</div>
                     <div class="agent-task">idle</div>
+                    <div class="agent-stream-hint">▼</div>
                 </div>
-                <div class="agent-card" id="agent-Jef">
+                <div class="agent-card" id="agent-Jef" onclick="toggleStream('Jef')">
                     <div class="agent-dot">⬤</div>
                     <div class="agent-name" style="color:#d2a8ff">Jef</div>
                     <div class="agent-task">idle</div>
+                    <div class="agent-stream-hint">▼</div>
                 </div>
-                <div class="agent-card" id="agent-Zed">
+                <div class="agent-card" id="agent-Zed" onclick="toggleStream('Zed')">
                     <div class="agent-dot">⬤</div>
                     <div class="agent-name" style="color:#3fb950">Zed</div>
                     <div class="agent-task">idle</div>
+                    <div class="agent-stream-hint">▼</div>
                 </div>
-                <div class="agent-card" id="agent-Earl">
+                <div class="agent-card" id="agent-Earl" onclick="toggleStream('Earl')">
                     <div class="agent-dot">⬤</div>
                     <div class="agent-name" style="color:#e3b341">Earl</div>
                     <div class="agent-task">idle</div>
+                    <div class="agent-stream-hint">▼</div>
                 </div>
-                <div class="agent-card" id="agent-Chris">
+                <div class="agent-card" id="agent-Chris" onclick="toggleStream('Chris')">
                     <div class="agent-dot">⬤</div>
                     <div class="agent-name" style="color:#f78166">Chris</div>
                     <div class="agent-task">idle</div>
+                    <div class="agent-stream-hint">▼</div>
                 </div>
+            </div>
+
+            <!-- Stream panel -->
+            <div class="stream-panel" id="stream-panel">
+                <div class="stream-panel-header">
+                    <span class="stream-panel-title" id="stream-panel-title">STREAM</span>
+                    <button class="btn-link stream-close" onclick="closeStream()">✕ fermer</button>
+                </div>
+                <div class="stream-body" id="stream-body"></div>
             </div>
         </div>
 

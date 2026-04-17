@@ -34,24 +34,40 @@ class TaskManager:
     # ==========================================
     # TASK OPERATIONS
     # ==========================================
+    # Guaranteed defaults for any field the LLM might omit
+    _TASK_DEFAULTS: Dict[str, Any] = {
+        "status":           "pending",
+        "priority_hint":    0.5,
+        "complexity":       0.5,
+        "vision_alignment": 0.5,
+        "dependencies":     [],
+        "outputs":          [],
+        "tags":             [],
+        "run_command":      None,
+        "retry_count":      0,
+        "correction_feedback": "",
+    }
+
     def add_task(self, task_data: Dict[str, Any]) -> str:
+        """Saves a task after filling in any missing fields with safe defaults."""
+        normalized = {**self._TASK_DEFAULTS, **task_data}
         state = self.load_state()
-        state["backlog"].append(task_data)
+        state["backlog"].append(normalized)
         state["metadata"]["total_tasks"] = len(state["backlog"])
         self.save_state(state)
-        return task_data["id"]
+        return normalized["id"]
 
     def update_task_status(self, task_id: str, new_status: str):
         state = self.load_state()
         for task in state["backlog"]:
-            if task["id"] == task_id:
+            if task.get("id") == task_id:
                 task["status"] = new_status
                 break
         self.save_state(state)
 
     def get_pending_tasks(self) -> List[Dict[str, Any]]:
         state = self.load_state()
-        return [t for t in state["backlog"] if t["status"] == "pending"]
+        return [t for t in state["backlog"] if t.get("status", "pending") == "pending"]
 
     def set_correction_feedback(self, task_id: str, feedback: str):
         """Stores Earl's review feedback on the task and increments retry_count."""

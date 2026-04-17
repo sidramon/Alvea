@@ -102,7 +102,7 @@ class Derick(BaseAgent):
         if slots_available <= 0:
             return []
 
-        completed_ids = {t["id"] for t in backlog if t["status"] == "completed"}
+        completed_ids = {t.get("id") for t in backlog if t.get("status") == "completed"}
         excluded_ids = (
             {t["task_id"] for t in plan["execution"]["ready_queue"]} |
             {t["task_id"] for t in plan["execution"]["in_progress"]} |
@@ -111,8 +111,8 @@ class Derick(BaseAgent):
 
         candidates = [
             t for t in backlog
-            if t["status"] == "pending"
-            and t["id"] not in excluded_ids
+            if t.get("status", "pending") == "pending"
+            and t.get("id") not in excluded_ids
             and self._deps_satisfied(t, completed_ids)
         ]
 
