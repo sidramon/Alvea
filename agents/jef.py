@@ -32,6 +32,9 @@ Rules:
 - Priority, complexity, and vision_alignment must be between 0.0 and 1.0.
 - 'type' must be one of: setup, feature, fix, refactor.
 - IDs must follow the pattern TASK-001, TASK-002, etc.
+- 'run_command' is OPTIONAL. Only include it when the task genuinely requires shell execution (e.g. running tests, installing packages). For static files (HTML, CSS, JS, JSON, images, Markdown), omit 'run_command' entirely — file verification is sufficient.
+- Examples of when to set run_command: "python -m pytest --tb=short -q", "pip install -r requirements.txt", "npm test".
+- Examples of when to omit run_command: creating an HTML page, writing a CSS file, writing a JS file, generating a config file.
 
 Respond ONLY with a valid JSON object in this exact format:
 {
@@ -46,7 +49,8 @@ Respond ONLY with a valid JSON object in this exact format:
       "complexity": 0.0,
       "vision_alignment": 0.0,
       "dependencies": [],
-      "outputs": ["workspace/relative/path.py"],
+      "outputs": ["workspace/relative/path.ext"],
+      "run_command": null,
       "status": "pending",
       "tags": []
     }

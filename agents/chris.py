@@ -20,14 +20,9 @@ class Chris(BaseAgent):
     Does NOT orchestrate, plan, write code, or review.
     """
 
-    # Maps task type to the shell command to run inside workspace/
-    # These are overridable per-task via the 'run_command' field (if present)
-    DEFAULT_COMMANDS: Dict[str, str] = {
-        "setup": "pip install -r requirements.txt",
-        "feature": "python -m pytest --tb=short -q",
-        "fix": "python -m pytest --tb=short -q",
-        "refactor": "python -m pytest --tb=short -q",
-    }
+    # Chris never assumes a default command.
+    # Tasks must declare an explicit 'run_command' field if execution is needed.
+    # Without it, Chris only verifies that output files exist, then succeeds.
 
     def __init__(
         self,
@@ -44,10 +39,10 @@ class Chris(BaseAgent):
     # MAIN ACTION
     # ==========================================
 
-    def execute_task(self, task_id: str) -> bool:
+    def execute_task(self, task_id: str) -> dict:
         """
         Verifies outputs exist and runs the task's execution command.
-        Returns True on success, False on crash.
+        Returns {"success": bool, "reason": str} — reason is empty on success.
         Publishes EXECUTION_SUCCESS or EXECUTION_CRASH.
         """
         task = self._get_task(task_id)
@@ -62,10 +57,21 @@ class Chris(BaseAgent):
         if missing:
             reason = f"Missing output files: {missing}"
             self._publish_crash(task_id, reason, "", reason, cycle)
-            return False
+            return {"success": False, "reason": reason}
 
-        # Step 2 — Determine which command to run
+        # Step 2 — Determine which command to run (None = verification only)
         command = self._resolve_command(task)
+
+        if command is None:
+            self.event_bus.publish(
+                agent="Chris",
+                event_type="EXECUTION_SUCCESS",
+                target=task_id,
+                payload={"task_id": task_id, "command": "none", "stdout": "Output files verified.", "exit_code": 0},
+                current_cycle=cycle
+            )
+            self.update_status("idle", current_task=None, last_action=f"SUCCESS:{task_id}")
+            return {"success": True, "reason": ""}
 
         # Step 3 — Execute
         result = self.executor.run_command(command)
@@ -84,12 +90,12 @@ class Chris(BaseAgent):
                 current_cycle=cycle
             )
             self.update_status("idle", current_task=None, last_action=f"SUCCESS:{task_id}")
-            return True
+            return {"success": True, "reason": ""}
 
         else:
             reason = result["stderr"] or f"Command exited with code {result['exit_code']}"
             self._publish_crash(task_id, reason, result["stdout"], result["stderr"], cycle)
-            return False
+            return {"success": False, "reason": reason}
 
     # ==========================================
     # PRIVATE HELPERS
@@ -117,17 +123,12 @@ class Chris(BaseAgent):
                 missing.append(rel_path)
         return missing
 
-    def _resolve_command(self, task: Dict[str, Any]) -> str:
+    def _resolve_command(self, task: Dict[str, Any]) -> str | None:
         """
-        Determines what command to run.
-        Priority: task['run_command'] field > DEFAULT_COMMANDS[type] > pytest fallback.
+        Returns the command to run, or None if no execution is needed.
+        Only tasks that explicitly declare 'run_command' trigger a shell command.
         """
-        # Allow tasks to declare an explicit command
-        if task.get("run_command"):
-            return task["run_command"]
-
-        task_type = task.get("type", "feature")
-        return self.DEFAULT_COMMANDS.get(task_type, "python -m pytest --tb=short -q")
+        return task.get("run_command") or None
 
     def _publish_crash(
         self,

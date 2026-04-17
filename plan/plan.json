@@ -1,24 +1,24 @@
 {
-    "project_id": "Axoloop Alvea",
-    "version": "0.1",
-    "state": {
-        "status": "idle",
-        "cycle": 0
-    },
-    "execution": {
-        "ready_queue": [],
-        "in_progress": [],
-        "blocked": []
-    },
-    "scheduling": {
-        "max_parallel_tasks": 1,
-        "selection_policy": "highest_score_first",
-        "admission_threshold": 0.65
-    },
-    "decisions": [],
-    "metrics": {
-        "completed_tasks": 0,
-        "failed_tasks": 0,
-        "avg_completion_time": 0
-    }
+  "project_id": "Axoloop Alvea",
+  "version": "0.1",
+  "state": {
+    "status": "idle",
+    "cycle": 0
+  },
+  "execution": {
+    "ready_queue": [],
+    "in_progress": [],
+    "blocked": []
+  },
+  "scheduling": {
+    "max_parallel_tasks": 1,
+    "selection_policy": "highest_score_first",
+    "admission_threshold": 0.65
+  },
+  "decisions": [],
+  "metrics": {
+    "completed_tasks": 0,
+    "failed_tasks": 0,
+    "avg_completion_time": 0
+  }
 }

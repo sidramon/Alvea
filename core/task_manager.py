@@ -52,3 +52,18 @@ class TaskManager:
     def get_pending_tasks(self) -> List[Dict[str, Any]]:
         state = self.load_state()
         return [t for t in state["backlog"] if t["status"] == "pending"]
+
+    def set_correction_feedback(self, task_id: str, feedback: str):
+        """Stores Earl's review feedback on the task and increments retry_count."""
+        state = self.load_state()
+        for task in state["backlog"]:
+            if task["id"] == task_id:
+                task["correction_feedback"] = feedback
+                task["retry_count"] = task.get("retry_count", 0) + 1
+                break
+        self.save_state(state)
+
+    def get_retry_count(self, task_id: str) -> int:
+        state = self.load_state()
+        task = next((t for t in state["backlog"] if t["id"] == task_id), None)
+        return task.get("retry_count", 0) if task else 0

@@ -27,12 +27,20 @@ class Earl(BaseAgent):
 
 Your ONLY job is to review code produced by Zed and determine if it meets all quality constraints.
 
-Evaluation criteria (all must pass):
+Evaluation criteria (ALL must pass — any single failure = passed: false):
 1. Correctness: Does the code logically accomplish what the task describes?
-2. Completeness: Are all expected output files present and fully implemented (no placeholders)?
+2. Completeness: Are all expected output files present and fully implemented?
 3. Architecture: Does the code respect single responsibility and clean separation of concerns?
 4. Quality: No dead code, no obvious bugs, no hardcoded secrets, no bare except clauses.
 5. Conformance: Does the code respect any constraints declared in vision_constraints?
+6. No placeholders: REJECT immediately if any file contains:
+   - Empty function or method bodies (only a comment or only "pass")
+   - "# Your code here", "# TODO", "# implement this", "# test code here", or similar
+   - Imports from fictional modules ("your_module", "my_module", "xxx_module")
+   - Test methods with no assertions (just comments or pass)
+   - Any stub that is not real, working code
+7. Integration: If integration constraints are listed, verify every required reference/import/link is present.
+8. Relevance: Does the implementation match the project type? A pure frontend task must not introduce unnecessary server-side code. Tests must import real symbols that exist in the project.
 
 Respond ONLY with a valid JSON object in this exact format:
 {
@@ -42,7 +50,7 @@ Respond ONLY with a valid JSON object in this exact format:
 }
 
 If passed is false, 'issues' must be a non-empty list of specific, actionable problem descriptions.
-Be precise: name the file and line if possible."""
+Be precise: name the file, the offending pattern, and what the correct implementation should be."""
 
     def __init__(
         self,
@@ -63,10 +71,10 @@ Be precise: name the file and line if possible."""
     # MAIN ACTION
     # ==========================================
 
-    def review_task(self, task_id: str) -> bool:
+    def review_task(self, task_id: str) -> dict:
         """
         Reviews all files produced for the given task.
-        Returns True if the review passed, False otherwise.
+        Returns {"passed": bool, "issues": list, "feedback": str}.
         Publishes REVIEW_PASSED or REVIEW_FAILED accordingly.
         """
         task = self._get_task(task_id)
@@ -82,7 +90,7 @@ Be precise: name the file and line if possible."""
         if not code_files:
             reason = "No output files found in workspace — Zed may not have written anything."
             self._publish_failed(task_id, [reason], reason, cycle)
-            return False
+            return {"passed": False, "issues": [reason], "feedback": reason}
 
         # Load vision constraints for the review prompt
         try:
@@ -90,7 +98,13 @@ Be precise: name the file and line if possible."""
         except Exception:
             vision = {}
 
-        user_prompt = self._build_prompt(task, code_files, vision)
+        # List existing workspace files so Earl can validate imports/references
+        try:
+            existing_files = self.executor.list_files()
+        except Exception:
+            existing_files = []
+
+        user_prompt = self._build_prompt(task, code_files, vision, existing_files)
         response = self.llm.ask_json(self.SYSTEM_PROMPT, user_prompt)
 
         passed = response.get("passed", False)
@@ -102,17 +116,14 @@ Be precise: name the file and line if possible."""
                 agent="Earl",
                 event_type="REVIEW_PASSED",
                 target=task_id,
-                payload={
-                    "task_id": task_id,
-                    "feedback": feedback
-                },
+                payload={"task_id": task_id, "feedback": feedback},
                 current_cycle=cycle
             )
             self.update_status("idle", current_task=None, last_action=f"REVIEW_PASSED:{task_id}")
         else:
             self._publish_failed(task_id, issues, feedback, cycle)
 
-        return passed
+        return {"passed": passed, "issues": issues, "feedback": feedback}
 
     # ==========================================
     # PRIVATE HELPERS
@@ -143,7 +154,8 @@ Be precise: name the file and line if possible."""
         self,
         task: Dict[str, Any],
         code_files: List[Dict[str, str]],
-        vision: Dict[str, Any]
+        vision: Dict[str, Any],
+        existing_files: List[str] = None
     ) -> str:
         """Constructs the full review prompt for the LLM."""
         lines = [
@@ -154,6 +166,13 @@ Be precise: name the file and line if possible."""
             f"Expected outputs: {task.get('outputs', [])}",
             f"",
         ]
+
+        if existing_files:
+            lines.append("=== EXISTING WORKSPACE FILES ===")
+            lines.append("Imports and references must point to files in this list (or files produced by this task):")
+            for f in existing_files:
+                lines.append(f"  - {f}")
+            lines.append("")
 
         # Include relevant vision constraints
         quality = vision.get("quality_constraints", {})
@@ -169,6 +188,27 @@ Be precise: name the file and line if possible."""
             for pattern in forbidden:
                 lines.append(f"- Forbidden pattern: {pattern}")
             lines.append("")
+
+        # Forward-dependency integration check
+        try:
+            all_tasks = self.tasks.load_state()["backlog"]
+            dependents = [t for t in all_tasks if task["id"] in t.get("dependencies", [])]
+            if dependents:
+                lines.append("=== INTEGRATION CONSTRAINTS ===")
+                lines.append(
+                    "This task has dependents that will produce the files listed below. "
+                    "The code under review MUST already reference/import/link these files correctly:"
+                )
+                for dep in dependents:
+                    for output in dep.get("outputs", []):
+                        clean = output.replace("workspace/", "", 1) if output.startswith("workspace/") else output
+                        lines.append(f"  - {clean}  ({dep['id']}: {dep['title']})")
+                lines.append(
+                    "If any of these references are missing, mark passed=false and list them in issues."
+                )
+                lines.append("")
+        except Exception:
+            pass
 
         lines.append("=== CODE TO REVIEW ===")
         for file_entry in code_files:

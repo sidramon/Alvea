@@ -50,6 +50,11 @@ async function doLaunch() {
         body: JSON.stringify(config),
     });
 
+    if (res.status === 409) {
+        appendMsg('System', 'Un run est déjà en cours — ignoré.');
+        return;
+    }
+
     if (res.ok) {
         setRunning(true);
         appendSep();

@@ -201,6 +201,21 @@ class Derick(BaseAgent):
     # TASK HANDOFF
     # ==========================================
 
+    def handoff_back_to_coder(self, task_id: str):
+        """
+        Sends a task that failed Earl's review back to Zed for correction.
+        Called when retry_count < retry_limit.
+        """
+        self._reassign_in_progress(task_id, "Zed")
+        cycle = self.get_current_cycle()
+        self.event_bus.publish(
+            agent="Derick",
+            event_type="TASK_STARTED",
+            target=task_id,
+            payload={"task_id": task_id, "assigned_to": "Zed", "retry": True},
+            current_cycle=cycle
+        )
+
     def handoff_to_reviewer(self, task_id: str):
         """
         Reassigns a task in in_progress from Zed to Earl (review phase).

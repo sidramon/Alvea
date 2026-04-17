@@ -56,8 +56,11 @@ class AlveaHandler(BaseHTTPRequestHandler):
         if path == "/api/run":
             try:
                 config = json.loads(body)
-                runner.start_run(config)
-                self._json({"ok": True})
+                started = runner.start_run(config)
+                if started:
+                    self._json({"ok": True})
+                else:
+                    self._json({"ok": False, "error": "already_running"}, 409)
             except Exception as e:
                 self._json({"ok": False, "error": str(e)}, 400)
 

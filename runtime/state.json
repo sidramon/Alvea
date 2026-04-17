@@ -14,9 +14,9 @@
       "last_action": null
     },
     "Jef": {
-      "status": "busy",
-      "current_task": "test\n\nContraintes techniques :\n- Architecture : Hexagonal\n- Docker : oui\n- Tests",
-      "last_action": "PLANNING"
+      "status": "idle",
+      "current_task": null,
+      "last_action": null
     },
     "Zed": {
       "status": "idle",

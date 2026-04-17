@@ -64,6 +64,16 @@ class ExecutorRuntime:
         with open(full_path, 'w', encoding='utf-8') as f:
             f.write(content)
 
+    def list_files(self) -> list:
+        """Returns all file paths in workspace/, relative to workspace/."""
+        result = []
+        for root, _, files in os.walk(self.workspace_dir):
+            for name in files:
+                full = os.path.join(root, name)
+                rel = os.path.relpath(full, self.workspace_dir).replace("\\", "/")
+                result.append(rel)
+        return sorted(result)
+
     def read_file(self, relative_path: str) -> str:
         """Useful for Earl during code review."""
         full_path = os.path.join(self.workspace_dir, relative_path)
