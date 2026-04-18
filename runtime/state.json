@@ -1,9 +1,9 @@
 {
   "project_id": "Axoloop Alvea",
-  "last_sync": "2026-04-17T16:25:11.584Z",
+  "last_sync": "",
   "engine": {
-    "status": "running",
-    "current_cycle": 50,
+    "status": "idle",
+    "current_cycle": 0,
     "global_stage": "vision",
     "health_check": "nominal"
   },
@@ -11,12 +11,12 @@
     "Derick": {
       "status": "idle",
       "current_task": null,
-      "last_action": "CYCLE_END"
+      "last_action": null
     },
     "Jef": {
-      "status": "busy",
-      "current_task": "un site web moderne avec des images de chat\n\nContraintes techniques :\n- Architec",
-      "last_action": "PLANNING"
+      "status": "idle",
+      "current_task": null,
+      "last_action": null
     },
     "Zed": {
       "status": "idle",

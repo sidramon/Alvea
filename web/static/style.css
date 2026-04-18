@@ -428,6 +428,65 @@ button {
     50%       { opacity: 0; }
 }
 
+/* ── Workspace path row ── */
+.workspace-row { margin-bottom: 2px; }
+.workspace-row input { font-size: 10px; }
+
+/* ── Per-agent LLM details ── */
+.agent-llm-details {
+    margin-top: 4px;
+}
+.agent-llm-details > summary {
+    cursor: pointer;
+    font-size: 9px;
+    font-weight: bold;
+    color: var(--dim);
+    letter-spacing: 0.5px;
+    margin-top: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+}
+.agent-llm-details > summary::-webkit-details-marker { display: none; }
+.agent-llm-details[open] > summary::after { content: ' ▲'; color: var(--border); }
+.agent-llm-details:not([open]) > summary::after { content: ' ▼'; color: var(--border); }
+
+.dim-hint { color: var(--border); font-weight: normal; }
+
+.agent-llm-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+    font-size: 10px;
+}
+.agent-llm-table th {
+    color: var(--dim);
+    font-size: 8px;
+    font-weight: bold;
+    letter-spacing: 0.4px;
+    text-align: left;
+    padding: 3px 4px;
+    border-bottom: 1px solid var(--border);
+}
+.agent-llm-table td {
+    padding: 2px 3px;
+    vertical-align: middle;
+}
+.agent-llm-table td:first-child {
+    font-weight: bold;
+    font-size: 10px;
+    width: 38px;
+    padding-left: 2px;
+}
+.agent-llm-table input[type="text"] {
+    font-size: 9px;
+    padding: 3px 5px;
+}
+
 /* Scrollbars */
 ::-webkit-scrollbar       { width: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg2); }

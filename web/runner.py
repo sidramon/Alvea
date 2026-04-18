@@ -95,6 +95,8 @@ _DEFAULT_VISION = {
     "definitions": {"task_granularity": "", "done_definition": ""}
 }
 
+_MODELS_FILE = "runtime/models.json"
+
 
 # ─────────────────────────────────────────────────────────────
 # SHARED STATE
@@ -107,7 +109,7 @@ class AppState:
     def __init__(self):
         self._lock = threading.Lock()
         self.running = False
-        self.status = "idle"          # idle | running | stopped | done | error
+        self.status = "idle"
         self.events: List[Dict] = []
         self.agent_status: Dict[str, Dict] = {
             a: {"status": "idle", "task": None} for a in AGENTS
@@ -169,7 +171,7 @@ class AppState:
 # Module-level singleton
 state = AppState()
 _thread: Optional[threading.Thread] = None
-_start_lock = threading.Lock()   # guards the check-and-set in start_run
+_start_lock = threading.Lock()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -177,16 +179,27 @@ _start_lock = threading.Lock()   # guards the check-and-set in start_run
 # ─────────────────────────────────────────────────────────────
 
 def start_run(config: Dict) -> bool:
-    """Starts the agent loop. Returns False if already running (idempotent)."""
+    """
+    Starts the agent loop. Returns False if already running.
+    Auto-resets state and JSON files before each run.
+    """
     global _thread
     with _start_lock:
-        # Double-check: refuse if thread is alive even if flag drifted
         if state.running or (_thread is not None and _thread.is_alive()):
             return False
+
+        # Auto-reset before every run
+        state.reset()
+        reset_files()
+
         state.running = True
         state.status = "running"
         _thread = threading.Thread(target=_run_system, args=(config,), daemon=True)
         _thread.start()
+
+        # Persist model/url history for future sessions
+        _save_model_history(config)
+
         return True
 
 
@@ -202,7 +215,7 @@ def reset():
 
 
 def reset_files():
-    """Resets all JSON state files and clears the events log to their default empty state."""
+    """Resets all JSON state files and clears the events log."""
     def write(path, data):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
@@ -212,9 +225,47 @@ def reset_files():
     write("plan/plan.json",     _DEFAULT_PLAN)
     write("runtime/state.json", _DEFAULT_RUNTIME_STATE)
     write("vision/vision.json", _DEFAULT_VISION)
-
-    # Clear events log
     open("runtime/events.log", "w").close()
+
+
+def load_model_history() -> Dict:
+    """Returns {models: [...], urls: [...]} from runtime/models.json."""
+    try:
+        with open(_MODELS_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"models": [], "urls": []}
+
+
+def _save_model_history(config: Dict):
+    """
+    Appends the used global model/url and any per-agent model/url to the history file.
+    Keeps the 10 most recent unique values.
+    """
+    try:
+        history = load_model_history()
+        models = history.get("models", [])
+        urls   = history.get("urls", [])
+
+        def _add(lst, val):
+            if val and val not in lst:
+                lst.insert(0, val)
+            return lst[:10]
+
+        _add(urls,   config.get("llm_url", ""))
+        _add(models, config.get("llm_model", ""))
+
+        for agent_cfg in config.get("agent_llm", {}).values():
+            if agent_cfg.get("url"):
+                _add(urls,   agent_cfg["url"])
+            if agent_cfg.get("model"):
+                _add(models, agent_cfg["model"])
+
+        os.makedirs("runtime", exist_ok=True)
+        with open(_MODELS_FILE, "w", encoding="utf-8") as f:
+            json.dump({"models": models, "urls": urls}, f, indent=2)
+    except Exception:
+        pass
 
 
 # ─────────────────────────────────────────────────────────────
@@ -235,17 +286,33 @@ def _run_system(config: Dict):
         from agents.earl import Earl
         from agents.chris import Chris
 
+        global_url   = config["llm_url"]
+        global_model = config["llm_model"]
+        agent_llm_cfg = config.get("agent_llm", {})
+
+        def _make_llm(agent_name: str) -> LocalLLM:
+            cfg   = agent_llm_cfg.get(agent_name, {})
+            url   = cfg.get("url")   or global_url
+            model = cfg.get("model") or global_model
+            return LocalLLM(base_url=url, model=model)
+
+        workspace_path = config.get("workspace_path", "workspace") or "workspace"
+
         bus      = EventBus(log_path="runtime/events.log")
         planner  = PlannerEngine(plan_file="plan/plan.json")
         task_mgr = TaskManager(tasks_file="tasks/tasks.json")
-        executor = ExecutorRuntime(workspace_dir="workspace")
-        llm      = LocalLLM(base_url=config["llm_url"], model=config["llm_model"])
+        executor = ExecutorRuntime(workspace_dir=workspace_path)
+
+        llm_jef   = _make_llm("Jef")
+        llm_zed   = _make_llm("Zed")
+        llm_earl  = _make_llm("Earl")
+        llm_chris = _make_llm("Chris")
 
         derick = Derick(bus, planner, task_mgr)
-        jef    = Jef(bus, task_mgr, llm)
-        zed    = Zed(bus, task_mgr, executor, llm)
-        earl   = Earl(bus, task_mgr, executor, llm)
-        chris  = Chris(bus, task_mgr, executor)
+        jef    = Jef(bus, task_mgr, llm_jef)
+        zed    = Zed(bus, task_mgr, executor, llm_zed)
+        earl   = Earl(bus, task_mgr, executor, llm_earl)
+        chris  = Chris(bus, task_mgr, executor, llm_chris)
 
         # Forward all bus events into the shared state
         terminal_events = {
@@ -254,9 +321,9 @@ def _run_system(config: Dict):
 
         def on_event(event: Dict):
             state.push_event(event)
-            agent = event.get("agent", "System")
+            agent      = event.get("agent", "System")
             event_type = event.get("event_type", "")
-            target = event.get("target")
+            target     = event.get("target")
             if agent in state.agent_status:
                 st = "idle" if event_type in terminal_events else "busy"
                 state.set_agent(agent, st, target if target != "system" else None)
@@ -271,7 +338,7 @@ def _run_system(config: Dict):
             if config["db"] != "Aucune":
                 vision["architecture"]["modules"] = [config["db"]]
             qc = vision.setdefault("quality_constraints", {})
-            qc["tests_required"] = config["components"].get("Tests unitaires", False)
+            qc["tests_required"]  = config["components"].get("Tests unitaires", False)
             qc["require_linting"] = config["components"].get("Linting", False)
             save_json("vision/vision.json", vision)
         except Exception:
@@ -288,24 +355,23 @@ def _run_system(config: Dict):
         objective = "\n".join(lines)
 
         def stream_for(agent_name: str):
-            """Returns an on_chunk callback that routes LLM tokens to state."""
             def _cb(chunk: str):
                 state.append_agent_stream(agent_name, chunk)
             return _cb
 
-        def with_stream(agent_name: str, fn):
+        def with_stream(agent_name: str, agent_llm: "LocalLLM", fn):
             """Clears the stream buffer, attaches callback, calls fn, detaches."""
             state.set_agent_stream(agent_name, "")
-            llm.on_chunk = stream_for(agent_name)
+            agent_llm.on_chunk = stream_for(agent_name)
             try:
                 return fn()
             finally:
-                llm.on_chunk = None
+                agent_llm.on_chunk = None
 
         # Phase 1: Planning
         state.push_msg("Jef", "Décomposition de l'objectif en cours...")
         state.set_agent("Jef", "busy")
-        task_ids = with_stream("Jef", lambda: jef.plan_objective(objective))
+        task_ids = with_stream("Jef", llm_jef, lambda: jef.plan_objective(objective))
         state.push_msg("Jef", f"{len(task_ids)} tâches créées : {task_ids}")
         state.set_agent("Jef", "idle")
 
@@ -322,7 +388,6 @@ def _run_system(config: Dict):
             derick.run_cycle()
             _sync_stats(planner, task_mgr)
 
-            # Snapshot the in_progress list at this moment
             snapshot = planner.load_plan()["execution"]["in_progress"]
 
             for entry in snapshot:
@@ -331,9 +396,7 @@ def _run_system(config: Dict):
 
                 task_id = entry["task_id"]
 
-                # ── Idempotency guard ─────────────────────────────────────
-                # Reload the plan right before processing — the entry may have
-                # been mutated by a previous iteration or a concurrent write.
+                # Idempotency guard
                 current_plan = planner.load_plan()
                 current_entry = next(
                     (e for e in current_plan["execution"]["in_progress"]
@@ -341,16 +404,14 @@ def _run_system(config: Dict):
                     None
                 )
                 if current_entry is None:
-                    # Already completed or blocked since snapshot was taken
                     continue
 
                 assigned = current_entry["assigned_to"]
-                # ─────────────────────────────────────────────────────────
 
                 if assigned == "Zed":
                     state.set_agent("Zed", "busy", task_id)
                     try:
-                        with_stream("Zed", lambda: zed.implement_task(task_id))
+                        with_stream("Zed", llm_zed, lambda: zed.implement_task(task_id))
                         derick.handoff_to_reviewer(task_id)
                     except Exception as e:
                         derick.fail_task(task_id, str(e))
@@ -359,7 +420,7 @@ def _run_system(config: Dict):
                 elif assigned == "Earl":
                     state.set_agent("Earl", "busy", task_id)
                     try:
-                        result = with_stream("Earl", lambda: earl.review_task(task_id))
+                        result = with_stream("Earl", llm_earl, lambda: earl.review_task(task_id))
                         if result["passed"]:
                             derick.handoff_to_executor(task_id)
                         else:
@@ -375,7 +436,7 @@ def _run_system(config: Dict):
                                 feedback = _format_review_feedback(result)
                                 task_mgr.set_correction_feedback(task_id, feedback)
                                 derick.handoff_back_to_coder(task_id)
-                                state.push_msg("Derick", f"{task_id} renvoyé à Zed pour correction (tentative {retry_count + 1}/{retry_limit}).")
+                                state.push_msg("Derick", f"{task_id} renvoyé à Zed (tentative {retry_count + 1}/{retry_limit}).")
                     except Exception as e:
                         derick.fail_task(task_id, str(e))
                     state.set_agent("Earl", "idle")
@@ -419,7 +480,6 @@ def _run_system(config: Dict):
 
 
 def _get_retry_limit() -> int:
-    """Reads retry_limit from vision.json. Falls back to 3 if unset or 0."""
     try:
         with open("vision/vision.json", encoding="utf-8") as f:
             vision = json.load(f)
@@ -430,14 +490,16 @@ def _get_retry_limit() -> int:
 
 
 def _format_chris_feedback(reason: str) -> str:
-    """Builds Zed-readable feedback from a Chris execution failure."""
     if "Missing output files" in reason:
-        # Extract the file list from "Missing output files: ['foo.py', 'bar.js']"
         return (
             f"Chris could not find the following declared output files in workspace/:\n"
             f"{reason}\n"
-            f"You MUST create every file listed in the task's 'outputs' field. "
-            f"Do not omit any file, even if it would be empty."
+            f"You MUST create every file listed in the task's 'outputs' field."
+        )
+    if "net::ERR_FILE_NOT_FOUND" in reason or "Static reference errors" in reason:
+        return (
+            f"Chris detected broken file references:\n{reason}\n"
+            f"Ensure every file referenced via src/href/import actually exists in workspace/."
         )
     return (
         f"Chris ran the task command and it crashed:\n{reason}\n"
@@ -446,7 +508,6 @@ def _format_chris_feedback(reason: str) -> str:
 
 
 def _format_review_feedback(result: dict) -> str:
-    """Builds a readable correction string from Earl's review result."""
     parts = []
     if result.get("feedback"):
         parts.append(result["feedback"])

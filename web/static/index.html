@@ -23,6 +23,12 @@
             <textarea id="description" rows="7"
                       placeholder="Décris ici l'objectif de ton projet..."></textarea>
 
+            <div class="section-label">📁&nbsp; Dossier de sortie</div>
+            <div class="form-row workspace-row">
+                <input type="text" id="workspace-path" value="workspace"
+                       placeholder="./workspace ou chemin absolu">
+            </div>
+
             <div class="section-label">🏗&nbsp; Architecture</div>
             <div class="radio-group">
                 <label><input type="radio" name="arch" value="Hexagonal" checked> Hexagonal</label>
@@ -54,19 +60,69 @@
                 <label><input type="radio" name="db" value="Redis"> Redis</label>
             </div>
 
-            <div class="section-label">🤖&nbsp; LLM</div>
+            <!-- Global LLM config -->
+            <div class="section-label">🤖&nbsp; LLM — Défaut</div>
             <div class="form-row">
                 <label>URL</label>
-                <input type="text" id="llm-url" value="http://localhost:11434/v1">
+                <input type="text" id="llm-url" list="url-list" value="http://localhost:11434/v1">
             </div>
             <div class="form-row">
                 <label>Modèle</label>
-                <input type="text" id="llm-model" value="llama3">
+                <input type="text" id="llm-model" list="model-list" value="llama3">
             </div>
             <div class="form-row">
                 <label>Max cycles</label>
                 <input type="number" id="max-cycles" value="20" min="1" max="200" class="input-short">
             </div>
+
+            <!-- Per-agent LLM overrides -->
+            <details class="agent-llm-details" id="agent-llm-details">
+                <summary>⚙&nbsp; Config par agent <span class="dim-hint">(optionnel)</span></summary>
+                <table class="agent-llm-table">
+                    <thead>
+                        <tr>
+                            <th>Agent</th>
+                            <th>URL</th>
+                            <th>Modèle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="color:#d2a8ff">Jef</td>
+                            <td><input type="text" id="llm-url-Jef"   list="url-list"   placeholder="(défaut)"></td>
+                            <td><input type="text" id="llm-model-Jef" list="model-list" placeholder="(défaut)"></td>
+                        </tr>
+                        <tr>
+                            <td style="color:#3fb950">Zed</td>
+                            <td><input type="text" id="llm-url-Zed"   list="url-list"   placeholder="(défaut)"></td>
+                            <td><input type="text" id="llm-model-Zed" list="model-list" placeholder="(défaut)"></td>
+                        </tr>
+                        <tr>
+                            <td style="color:#e3b341">Earl</td>
+                            <td><input type="text" id="llm-url-Earl"   list="url-list"   placeholder="(défaut)"></td>
+                            <td><input type="text" id="llm-model-Earl" list="model-list" placeholder="(défaut)"></td>
+                        </tr>
+                        <tr>
+                            <td style="color:#f78166">Chris</td>
+                            <td><input type="text" id="llm-url-Chris"   list="url-list"   placeholder="(défaut)"></td>
+                            <td><input type="text" id="llm-model-Chris" list="model-list" placeholder="(défaut)"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </details>
+
+            <!-- Datalists populated by JS from /api/config history -->
+            <datalist id="model-list">
+                <option value="llama3">
+                <option value="mistral">
+                <option value="codellama">
+                <option value="deepseek-coder">
+                <option value="gemma2">
+                <option value="qwen2.5-coder">
+            </datalist>
+            <datalist id="url-list">
+                <option value="http://localhost:11434/v1">
+            </datalist>
 
             <button id="launch-btn" class="btn-green" onclick="toggleRun()">▶&nbsp; LANCER LES AGENTS</button>
             <button id="reset-btn" class="btn-dim" onclick="doReset()">↺&nbsp; RESET</button>

@@ -4,6 +4,7 @@ Alvea — HTTP server.
 Routes:
     GET  /                      → index.html
     GET  /static/<file>         → static files
+    GET  /api/config            → LLM defaults + model/url history
     GET  /api/status?since=N    → JSON snapshot (events from offset N)
     POST /api/run               → start agent loop (JSON config body)
     POST /api/stop              → stop agent loop
@@ -20,7 +21,6 @@ from web import runner
 
 PORT = int(os.environ.get("PORT", 5000))
 
-# LLM defaults — overridable via environment variables (e.g. in docker-compose)
 DEFAULT_LLM_URL   = os.environ.get("LLM_URL",   "http://localhost:11434/v1")
 DEFAULT_LLM_MODEL = os.environ.get("LLM_MODEL", "llama3")
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
@@ -31,7 +31,7 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 # ─────────────────────────────────────────────────────────────
 
 class AlveaHandler(BaseHTTPRequestHandler):
-    def log_message(self, format, *args):  # silence access logs
+    def log_message(self, format, *args):
         pass
 
     # ── GET ──────────────────────────────────────────────────
@@ -45,7 +45,13 @@ class AlveaHandler(BaseHTTPRequestHandler):
         elif path.startswith("/static/"):
             self._serve_static(path[len("/static/"):])
         elif path == "/api/config":
-            self._json({"llm_url": DEFAULT_LLM_URL, "llm_model": DEFAULT_LLM_MODEL})
+            history = runner.load_model_history()
+            self._json({
+                "llm_url":       DEFAULT_LLM_URL,
+                "llm_model":     DEFAULT_LLM_MODEL,
+                "model_history": history.get("models", []),
+                "url_history":   history.get("urls",   []),
+            })
         elif path == "/api/status":
             qs    = parse_qs(parsed.query)
             since = int(qs.get("since", ["0"])[0])
@@ -123,7 +129,7 @@ class AlveaHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin",  "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 

@@ -39,10 +39,10 @@
     }
   },
   "quality_constraints": {
-    "tests_required": false,
+    "tests_required": true,
     "max_function_length": 0,
     "max_file_complexity": 0,
-    "require_linting": false
+    "require_linting": true
   },
   "forbidden_patterns": [
     ""

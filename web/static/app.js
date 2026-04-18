@@ -1,17 +1,38 @@
 'use strict';
 
-// Load server-side defaults (LLM_URL / LLM_MODEL from env) on page load
+// Load server-side defaults and model history on page load
 (async () => {
     try {
         const res = await fetch('/api/config');
         if (!res.ok) return;
         const cfg = await res.json();
+
+        // Fill global LLM fields
         const urlEl   = document.getElementById('llm-url');
         const modelEl = document.getElementById('llm-model');
         if (urlEl   && cfg.llm_url)   urlEl.value   = cfg.llm_url;
         if (modelEl && cfg.llm_model) modelEl.value = cfg.llm_model;
-    } catch { /* server not yet ready — keep HTML defaults */ }
+
+        // Populate datalists with history (prepend to static defaults)
+        _populateDatalist('model-list', cfg.model_history || []);
+        _populateDatalist('url-list',   cfg.url_history   || []);
+    } catch { /* server not yet ready */ }
 })();
+
+function _populateDatalist(id, values) {
+    const list = document.getElementById(id);
+    if (!list) return;
+    const existing = new Set([...list.options].map(o => o.value));
+    for (const v of [...values].reverse()) {          // reverse so most-recent ends up first
+        if (v && !existing.has(v)) {
+            const opt = document.createElement('option');
+            opt.value = v;
+            list.prepend(opt);
+            existing.add(v);
+        }
+    }
+}
+
 
 // ─────────────────────────────────────────────────────────────
 // STATE
@@ -31,10 +52,12 @@ const AGENT_NAME_COLORS = {
     Chris:  '#f78166',
 };
 
-let running          = false;
-let eventOffset      = 0;
-let pollTimer        = null;
-let activeStreamAgent = null;   // which agent's stream is displayed
+const LLM_AGENTS = ['Jef', 'Zed', 'Earl', 'Chris'];
+
+let running           = false;
+let eventOffset       = 0;
+let pollTimer         = null;
+let activeStreamAgent = null;
 
 
 // ─────────────────────────────────────────────────────────────
@@ -53,8 +76,17 @@ async function doLaunch() {
         return;
     }
 
+    // Per-agent LLM overrides (empty string = use global default)
+    const agent_llm = {};
+    for (const agent of LLM_AGENTS) {
+        const url   = (document.getElementById(`llm-url-${agent}`)?.value   || '').trim();
+        const model = (document.getElementById(`llm-model-${agent}`)?.value || '').trim();
+        agent_llm[agent] = { url, model };
+    }
+
     const config = {
         description,
+        workspace_path: (document.getElementById('workspace-path').value || '').trim() || 'workspace',
         arch: document.querySelector('input[name="arch"]:checked').value,
         components: Object.fromEntries(
             [...document.querySelectorAll('input[name="comp"]')]
@@ -64,6 +96,7 @@ async function doLaunch() {
         llm_url:    document.getElementById('llm-url').value,
         llm_model:  document.getElementById('llm-model').value,
         max_cycles: parseInt(document.getElementById('max-cycles').value, 10),
+        agent_llm,
     };
 
     const res = await fetch('/api/run', {
@@ -78,9 +111,16 @@ async function doLaunch() {
     }
 
     if (res.ok) {
+        // Reset UI for the fresh run (server auto-resets files)
+        clearLog();
+        resetAgents();
+        setStats(0, 0, 0);
+        eventOffset = 0;
+
         setRunning(true);
         appendSep();
         appendMsg('System', `Démarrage — objectif : ${description.slice(0, 80)}`);
+        appendMsg('System', `Workspace : ${config.workspace_path}`);
         startPolling();
     }
 }
@@ -136,25 +176,19 @@ async function poll() {
         if (!res.ok) return;
         const data = await res.json();
 
-        // Agent cards
         for (const [agent, info] of Object.entries(data.agent_status)) {
             updateAgentCard(agent, info.status, info.task);
         }
 
-        // Stats
         setStats(data.stats.cycle, data.stats.completed, data.stats.blocked);
-
-        // Stream panel
         updateStreamPanel(data.agent_stream);
 
-        // New events / messages
         for (const ev of data.events) {
             if (ev._msg) appendMsg(ev.agent, ev.msg);
             else         renderEvent(ev);
         }
         eventOffset = data.total_events;
 
-        // Terminal states
         if (!data.running && data.status !== 'idle' && data.status !== 'running') {
             stopPolling();
             setRunning(false);
@@ -238,7 +272,7 @@ function payloadHint(payload) {
 
 function span(text, className) {
     const el = document.createElement('span');
-    el.className  = className;
+    el.className   = className;
     el.textContent = text;
     return el;
 }
@@ -264,11 +298,8 @@ function resetAgents() {
 // ── Stream panel ─────────────────────────────────────────────
 
 function toggleStream(agent) {
-    if (activeStreamAgent === agent) {
-        closeStream();
-    } else {
-        openStream(agent);
-    }
+    if (activeStreamAgent === agent) closeStream();
+    else                             openStream(agent);
 }
 
 function openStream(agent) {
@@ -320,7 +351,7 @@ function setStats(cycle, completed, blocked) {
 }
 
 function setStatusBadge(text, color) {
-    const badge   = document.getElementById('status-badge');
+    const badge = document.getElementById('status-badge');
     badge.textContent = text;
     badge.style.color = color;
 }
