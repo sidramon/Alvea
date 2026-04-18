@@ -41,13 +41,19 @@ Rules for files:
 Rules for setup_commands:
 - Use setup_commands when the task requires generating files that cannot be written as text:
   * Project scaffolding: npx create-next-app, npm init, django-admin startproject, etc.
-  * Database initialization: sqlite3 db.sqlite < schema.sql, flask db upgrade, etc.
+  * Database initialization: running a Python init script, flask db upgrade, etc.
   * Binary asset generation: npm run build, webpack, etc.
   * Dependency installation: npm install, pip install -r requirements.txt, etc.
 - Commands run sequentially in the workspace directory. Each must succeed before the next runs.
 - Prefer a single compound command (with &&) over many separate commands when possible.
 - Do NOT use setup_commands for tasks that only require writing text files.
 - setup_commands output is NOT reviewed by Earl — only the resulting files are.
+- CRITICAL: The task prompt includes an "Execution environment" section listing which tools are installed.
+  You MUST only use tools marked ✓ Available. Never use a tool marked ✗ Missing.
+  Common substitutions when tools are missing:
+  * sqlite3 CLI missing → write a Python init_db.py using the built-in sqlite3 module, run: python3 init_db.py
+  * npm/npx missing → write all project files manually (package.json, src/, etc.) instead of scaffolding
+  * No tool available → write everything as plain files, no setup_commands needed
 
 Respond ONLY with a valid JSON object in this exact format:
 {
@@ -192,6 +198,12 @@ Respond ONLY with a valid JSON object in this exact format:
             quality = vision.get("quality_constraints", {})
             if quality.get("tests_required"):
                 lines.append("Tests are required (write them in a separate test file if not already in outputs).")
+        except Exception:
+            pass
+
+        # Execution environment — which tools are available for setup_commands
+        try:
+            lines.append(f"\n{self.executor.tools_summary()}")
         except Exception:
             pass
 
